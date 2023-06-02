@@ -71,9 +71,44 @@ extern "C" {
 
 }
 
-char* firmwareVersion = "MISCHIANTI_v1.3";
+char* firmwareVersion = "_v1.3_Tg";
 
+#define TELEGRAM
 
+#ifdef TELEGRAM
+#include <AsyncTelegram2.h>
+
+// Timezone definition
+#include <time.h>
+#define MYTZ "CET-1CEST,M3.5.0,M10.5.0/3"
+
+BearSSL::WiFiClientSecure clientsec;
+BearSSL::Session session;
+BearSSL::X509List certificate(telegram_cert);
+
+AsyncTelegram2 myBot(clientsec);
+
+// Name of public channel (your bot must be in admin group)
+int64_t userid = 123456789;
+const char* token = "<Your Telegram Bot Token>";
+String device = "<Your Printer Name>";
+bool afSent = false;
+bool afSend = false;
+
+void tgOwnerSend(String s) {
+  if (WiFi.status() == WL_CONNECTED) {
+    String message;
+    message += device;
+    message += " (";
+    message += WiFi.localIP().toString();
+    message += "):\n";
+    message += s;
+    //DEBUG_PRINTLN(message);
+    //myBot.sendToChannel(channel, message, true);
+    myBot.sendTo(userid, message);
+  }
+}
+#endif
 
 char M3_TYPE = TFT28;
 #define CONFIG_FILE_HEAP 1024
@@ -961,7 +996,28 @@ void setup() {
 
   //  net_env_prepare();
 
-
+#ifdef TELEGRAM
+    // Sync time with NTP, to check properly Telegram certificate
+    configTime(MYTZ, "time.google.com", "time.windows.com", "pool.ntp.org");
+    //Set certficate, session and some other base client properies
+    clientsec.setSession(&session);
+    clientsec.setTrustAnchors(&certificate);
+    clientsec.setBufferSizes(1024, 1024);
+    // Set the Telegram bot properies
+    myBot.setUpdateTime(2000);
+    myBot.setTelegramToken(token);
+  
+    // Check if all things are ok
+    DEBUG_PRINT("\nTest Telegram connection... ");
+    if (myBot.begin()) {
+      DEBUG_PRINTLN("OK");
+    } else {
+      DEBUG_PRINTLN("NOK");
+    }
+  
+    // Send a message to specific user who has started your bot
+    tgOwnerSend("OnLine");
+#endif
   }
   /*else if (smartConfig())
   {
@@ -1251,7 +1307,30 @@ void loop()
         DEBUG_PRINTLN(F("fail."));
       }
 #endif
-
+#ifdef TELEGRAM
+      tgOwnerSend("Print Job Completed!");
+    }
+    if (prevState == PRINTER_IDLE && gPrinterInf.print_state == PRINTER_PRINTING) {
+      afSend = true;
+    }
+    if (afSend && gPrinterInf.print_file_inf.file_name.length() > 3){
+      tgOwnerSend(gPrinterInf.print_file_inf.file_name + "\nPrint Job Started...");
+      afSend = false;
+    }
+    if (prevState == PRINTER_PRINTING && gPrinterInf.print_state == PRINTER_PAUSE) {
+      tgOwnerSend("WARNING: Printer Paused or Filament is Over!");
+    }
+    if (prevState == PRINTER_PAUSE && gPrinterInf.print_state == PRINTER_PRINTING) {
+      tgOwnerSend(gPrinterInf.print_file_inf.file_name + "\nResumed...");
+    }
+    if (prevState != PRINTER_PRINTING && gPrinterInf.print_state == PRINTER_PRINTING) {
+      afSent = false;
+    }
+    if(gPrinterInf.print_state == PRINTER_PRINTING && gPrinterInf.print_file_inf.print_rate >= 95 && not afSent)
+    {
+      tgOwnerSend("INFO: Print Job is completed on 95%");
+      afSent = true;
+#endif
     }
     prevState = gPrinterInf.print_state;
     startTime = millis();
