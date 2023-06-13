@@ -16,7 +16,7 @@
 
 #include <ArduinoJson.h>
 #include <ESP8266WiFi.h>
-#include <ESP8266mDNS.h>
+#include <ESP8266mDNS.h>loo
 //#include <DNSServer.h>
 #include "RepRapWebServer.h"
 #include "MksHTTPUpdateServer.h"
@@ -71,9 +71,10 @@ extern "C" {
 
 }
 
-char* firmwareVersion = "_v1.3_Tg";
+char* firmwareVersion = "MISCHIANTI_v1.3_Tg";
 
 #define TELEGRAM
+#define TELEGRAM_R
 
 #ifdef TELEGRAM
 #include <AsyncTelegram2.h>
@@ -89,6 +90,7 @@ BearSSL::X509List certificate(telegram_cert);
 AsyncTelegram2 myBot(clientsec);
 
 // Name of public channel (your bot must be in admin group)
+//const char* channel = "@VscEsp";
 int64_t userid = 123456789;
 const char* token = "<Your Telegram Bot Token>";
 String device = "<Your Printer Name>";
@@ -1203,14 +1205,14 @@ int get_printer_reply()
 
 }
 
-int interval = 2000;
+int interval = 200;
 unsigned long startTime = millis();
 
 PRINT_STATE prevState = PRINTER_NOT_CONNECT;
 
 void loop()
 {
-  if (startTime+interval<millis()){
+  if (!transfer_file_flag && startTime+interval<millis()){
     DEBUG_PRINT(F("PRINTER STATE --> "))
     DEBUG_PRINT(gPrinterInf.print_state);
     DEBUG_PRINT(F(" "))
@@ -1539,6 +1541,9 @@ bool manageMessage(char* readStr, int readSize){
           file_fragment = 0;
           rcv_end_flag = false;
           transfer_file_flag = true;
+#ifdef TELEGRAM_R        
+          myBot.end();
+#endif        
 
           if(package_file_first(filePath) == 0)
           {
@@ -1548,6 +1553,9 @@ bool manageMessage(char* readStr, int readSize){
           else
           {
             transfer_file_flag = false;
+#ifdef TELEGRAM_R        
+            myBot.begin();
+#endif        
             transfer_state = TRANSFER_IDLE;
           }
           net_print((const uint8_t *) "ok\n", strlen((const char *)"ok\n"));
@@ -2726,6 +2734,9 @@ void do_transfer()
         rcv_end_flag = false;
 
         transfer_file_flag = false;
+#ifdef TELEGRAM_R        
+        myBot.begin();
+#endif        
 
         transfer_state = TRANSFER_IDLE;
     #endif
@@ -2780,6 +2791,9 @@ void do_transfer()
              Serial.begin(115200);
           }
           transfer_file_flag = false;
+#ifdef TELEGRAM_R        
+          myBot.begin();
+#endif        
           rcv_end_flag = false;
           transfer_state = TRANSFER_IDLE;
 
@@ -4025,6 +4039,9 @@ void handleUpload()
     file_fragment = 0;
     rcv_end_flag = false;
     transfer_file_flag = true;
+#ifdef TELEGRAM_R        
+    myBot.end();
+#endif        
     gFileFifo.reset();
     upload_error = false;
     upload_success = false;
@@ -4045,6 +4062,9 @@ void handleUpload()
     else
     {
       transfer_file_flag = false;
+#ifdef TELEGRAM_R        
+      myBot.begin();
+#endif            
     }
     /*wait m3 reply for first frame*/
     int wait_tick = 0;
@@ -4173,9 +4193,13 @@ void handleUpload()
 
 
       transfer_file_flag = false;
+#ifdef TELEGRAM_R        
+      myBot.begin();
+#endif        
       rcv_end_flag = false;
       transfer_state = TRANSFER_IDLE;
       server.send(500, FPSTR(STR_MIME_APPLICATION_JSON), FPSTR(STR_JSON_ERR_500_NO_DATA_RECEIVED));
+
     }
 
     }
