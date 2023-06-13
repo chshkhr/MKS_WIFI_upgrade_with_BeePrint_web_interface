@@ -16,7 +16,7 @@
 
 #include <ArduinoJson.h>
 #include <ESP8266WiFi.h>
-#include <ESP8266mDNS.h>loo
+#include <ESP8266mDNS.h>
 //#include <DNSServer.h>
 #include "RepRapWebServer.h"
 #include "MksHTTPUpdateServer.h"
@@ -90,7 +90,6 @@ BearSSL::X509List certificate(telegram_cert);
 AsyncTelegram2 myBot(clientsec);
 
 // Name of public channel (your bot must be in admin group)
-//const char* channel = "@VscEsp";
 int64_t userid = 123456789;
 const char* token = "<Your Telegram Bot Token>";
 String device = "<Your Printer Name>";
