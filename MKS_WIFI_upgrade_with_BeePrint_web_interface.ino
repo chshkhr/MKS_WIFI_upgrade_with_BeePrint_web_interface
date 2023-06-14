@@ -1152,7 +1152,9 @@ void loop()
 {
 
 #ifdef TELEGRAM
-  processTelegram();
+  if (!transfer_file_flag) {
+    processTelegram();
+  }
 #endif
   
   int i;
