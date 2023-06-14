@@ -25,14 +25,9 @@ BearSSL::X509List certificate(telegram_cert);
 AsyncTelegram2 myBot(clientsec);
 
 // Name of public channel (your bot must be in admin group)
-//const char* channel = "@VscEsp";
-int64_t userid = 248947239;
-const char* token = "6256218324:AAFdr9j8eVG-jp63R-u27bd_TSp_9UAamfs";
-String device = "CR-10";
-//const char* token = "6204913234:AAGLd9bkE8FOfT1WvFCpVeSjgBpoMqEELjU";
-//String device = "Anet A8";
-//const char* token = "6059619938:AAFVVUeVKhUKmzL2ZZZfZnBZUvVuCPNkFBk";
-//String device = "Sapphire Pro";
+int64_t userid = 123456789;
+const char* token = "<Your Telegram Bot Token>";
+String device = "<Your Printer Name>";
 
 void tgOwnerSend(String s) {
     myBot.sendTo(userid, device + s);
