@@ -25,20 +25,12 @@ BearSSL::X509List certificate(telegram_cert);
 AsyncTelegram2 myBot(clientsec);
 
 // Name of public channel (your bot must be in admin group)
-//const char* channel = "@VscEsp";
-int64_t userid = 248947239;
-const char* token = "6256218324:AAFdr9j8eVG-jp63R-u27bd_TSp_9UAamfs";
-String device = "CR-10";
-//const char* token = "6204913234:AAGLd9bkE8FOfT1WvFCpVeSjgBpoMqEELjU";
-//String device = "Anet A8";
-//const char* token = "6059619938:AAFVVUeVKhUKmzL2ZZZfZnBZUvVuCPNkFBk";
-//String device = "Sapphire Pro";
+int64_t userid = 123456789;
+const char* token = "<Your Telegram Bot Token>";
+String device = "<Your Printer Name>";
 
 void tgOwnerSend(String s) {
-    String message;
-    message += device;
-    message += s;
-    myBot.sendTo(userid, message);
+    myBot.sendTo(userid, device + s);
 }
 
 void initTelegram(String ip) 
@@ -54,12 +46,61 @@ void initTelegram(String ip)
     myBot.setTelegramToken(token);
   
     if (myBot.begin()) {
-      device += "("; 
+      device += " ("; 
       device += ip;
       device += "):\n";
       tgOwnerSend("OnLine");
     }
 }
+
+String process_tg_message(char* msg_txt)
+{
+  char* command = strtok(msg_txt, " ");
+  String s = "";
+  char buf[40];
+  if (strcmp(command, "Time") == 0) {
+    sprintf(buf, "%02d:%02d:%02d",
+                  gPrinterInf.print_file_inf.print_hours, gPrinterInf.print_file_inf.print_mins, gPrinterInf.print_file_inf.print_seconds);
+    s = "Time: ";
+    s += buf;
+  } else if (strcmp(command, "Temp") == 0) {
+    sprintf(buf, "Nozzle: %d/%d\nBed: %d/%d",
+          (int)gPrinterInf.curSprayerTemp[0], (int)gPrinterInf.desireSprayerTemp[0], (int)gPrinterInf.curBedTemp, (int)gPrinterInf.desireBedTemp);
+    s += buf;
+  } else if (strcmp(command, "Status") == 0) {
+    s = "Status: ";
+    switch(gPrinterInf.print_state) {
+        case PRINTER_IDLE: s += "IDLE"; break;
+        case PRINTER_PRINTING: s += "PRINTING"; break;
+        case PRINTER_PAUSE: s += "PAUSE"; break;
+    }
+  } else if (strcmp(command, "File") == 0) {
+    s = "File: ";
+    s += gPrinterInf.print_file_inf.file_name;
+  } else {
+    s = "Unknown: ";
+    s += command;
+    s += ".\nAvailable: Status, File, Temp, Time";
+  }
+  return s;
+}
+
+void processTelegram(void)
+{
+      // local variable to store telegram message data
+      TBMessage msg;
+
+      // if there is an incoming message...
+      if (myBot.getNewMessage(msg) && msg.chatId == userid) {
+        int l = msg.text.length() + 1;
+        char buf[l];
+        msg.text.toCharArray(buf, l);
+        String s = process_tg_message(buf);
+        if (s != "")
+          myBot.sendMessage(msg, s);
+      }
+}
+
 #endif
 
 void setPrintState(PRINT_STATE value)
@@ -70,13 +111,13 @@ void setPrintState(PRINT_STATE value)
       tgOwnerSend("WARNING: Printer Paused or Filament is Over!");
     }
     if (gPrinterInf.print_state == PRINTER_PAUSE && value == PRINTER_PRINTING) {
-      tgOwnerSend(gPrinterInf.print_file_inf.file_name + "\nResumed...");
+      tgOwnerSend("Resumed...");
     }
     if (gPrinterInf.print_state == PRINTER_IDLE && value == PRINTER_PRINTING) {
-      tgOwnerSend(gPrinterInf.print_file_inf.file_name + "\nPrint Job Started...");
+      tgOwnerSend("Print Job Started...");
     }
     if (gPrinterInf.print_state == PRINTER_PRINTING && value == PRINTER_IDLE) {
-      tgOwnerSend(gPrinterInf.print_file_inf.file_name + "\nPrint Job Terminated!");
+      tgOwnerSend("Print Job Terminated!");
     }
 #endif
     gPrinterInf.print_state = value;

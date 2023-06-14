@@ -55,6 +55,7 @@ extern File treeFile;
 
 #ifdef TELEGRAM
 extern void initTelegram(String ip);
+extern void processTelegram(void);
 #endif
 extern void setPrintState(PRINT_STATE value);
 

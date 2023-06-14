@@ -1150,6 +1150,11 @@ int get_printer_reply()
 
 void loop()
 {
+
+#ifdef TELEGRAM
+  processTelegram();
+#endif
+  
   int i;
 
   //output_json();
