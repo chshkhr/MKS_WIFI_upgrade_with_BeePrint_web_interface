@@ -31,4 +31,3 @@ const char STR_JSON_ERR_500_IS_BUSY[] PROGMEM = "{\"err\":\"ERROR 500: IS BUSY\"
 
 // End
 #endif //POOLED_STRINGS_H
-

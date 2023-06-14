@@ -73,44 +73,6 @@ extern "C" {
 
 char* firmwareVersion = "MISCHIANTI_v1.3_Tg";
 
-#define TELEGRAM
-#define TELEGRAM_R
-
-#ifdef TELEGRAM
-#include <AsyncTelegram2.h>
-
-// Timezone definition
-#include <time.h>
-#define MYTZ "CET-1CEST,M3.5.0,M10.5.0/3"
-
-BearSSL::WiFiClientSecure clientsec;
-BearSSL::Session session;
-BearSSL::X509List certificate(telegram_cert);
-
-AsyncTelegram2 myBot(clientsec);
-
-// Name of public channel (your bot must be in admin group)
-int64_t userid = 123456789;
-const char* token = "<Your Telegram Bot Token>";
-String device = "<Your Printer Name>";
-bool afSent = false;
-bool afSend = false;
-
-void tgOwnerSend(String s) {
-  if (WiFi.status() == WL_CONNECTED) {
-    String message;
-    message += device;
-    message += " (";
-    message += WiFi.localIP().toString();
-    message += "):\n";
-    message += s;
-    //DEBUG_PRINTLN(message);
-    //myBot.sendToChannel(channel, message, true);
-    myBot.sendTo(userid, message);
-  }
-}
-#endif
-
 char M3_TYPE = TFT28;
 #define CONFIG_FILE_HEAP 1024
 
@@ -949,7 +911,6 @@ void var_init()
   gPrinterInf.desireSprayerTemp[0] = 0.0;
   gPrinterInf.desireSprayerTemp[1] = 0.0;
   gPrinterInf.print_state = PRINTER_NOT_CONNECT;
-
 }
 
 
@@ -998,26 +959,7 @@ void setup() {
   //  net_env_prepare();
 
 #ifdef TELEGRAM
-    // Sync time with NTP, to check properly Telegram certificate
-    configTime(MYTZ, "time.google.com", "time.windows.com", "pool.ntp.org");
-    //Set certficate, session and some other base client properies
-    clientsec.setSession(&session);
-    clientsec.setTrustAnchors(&certificate);
-    clientsec.setBufferSizes(1024, 1024);
-    // Set the Telegram bot properies
-    myBot.setUpdateTime(2000);
-    myBot.setTelegramToken(token);
-  
-    // Check if all things are ok
-    DEBUG_PRINT("\nTest Telegram connection... ");
-    if (myBot.begin()) {
-      DEBUG_PRINTLN("OK");
-    } else {
-      DEBUG_PRINTLN("NOK");
-    }
-  
-    // Send a message to specific user who has started your bot
-    tgOwnerSend("OnLine");
+    initTelegram(WiFi.localIP().toString());
 #endif
   }
   /*else if (smartConfig())
@@ -1204,139 +1146,10 @@ int get_printer_reply()
 
 }
 
-int interval = 200;
-unsigned long startTime = millis();
 
-PRINT_STATE prevState = PRINTER_NOT_CONNECT;
 
 void loop()
 {
-  if (!transfer_file_flag && startTime+interval<millis()){
-    DEBUG_PRINT(F("PRINTER STATE --> "))
-    DEBUG_PRINT(gPrinterInf.print_state);
-    DEBUG_PRINT(F(" "))
-    DEBUG_PRINTLN(prevState);
-
-    if (prevState == PRINTER_PRINTING && gPrinterInf.print_state == PRINTER_IDLE) {
-#ifdef SEND_EMAIL
-
-      DEBUG_PRINT(F("MEM "));
-      DEBUG_PRINTLN(ESP.getFreeHeap());
-
-      DEBUG_PRINT(F("Open config file..."));
-      fs::File configFile = SPIFFS.open(F("/mc/config.txt"), "r");
-      if (configFile) {
-        DEBUG_PRINTLN(F("done."));
-        DynamicJsonDocument doc(CONFIG_FILE_HEAP);
-        DeserializationError error = deserializeJson(doc, configFile);
-        if (error) {
-          // if the file didn't open, print an error:
-          DEBUG_PRINT(F("Error parsing JSON "));
-          DEBUG_PRINTLN(error.c_str());
-        }
-
-        // close the file:
-        configFile.close();
-
-        DEBUG_PRINT(F("MEM "));
-        DEBUG_PRINTLN(ESP.getFreeHeap());
-
-        JsonObject rootObj = doc.as<JsonObject>();
-
-        DEBUG_PRINT(F("After read config check serverSMTP and emailNotification "));
-        DEBUG_PRINTLN(rootObj.containsKey(F("serverSMTP")) && rootObj.containsKey(F("emailNotification")));
-
-        if (rootObj.containsKey(F("serverSMTP")) && rootObj.containsKey(F("emailNotification"))){
-  //            JsonObject serverConfig = rootObj["server"];
-          JsonObject serverSMTP = rootObj[F("serverSMTP")];
-          JsonObject emailNotification = rootObj[F("emailNotification")];
-
-          bool isNotificationEnabled = (emailNotification.containsKey(F("isNotificationEnabled")))?emailNotification[F("isNotificationEnabled")]:false;
-
-          DEBUG_PRINT(F("isNotificationEnabled "));
-          DEBUG_PRINTLN(isNotificationEnabled);
-
-          if (isNotificationEnabled && false){
-            const char* serverSMTPAddr = serverSMTP[F("server")];
-            emailSend.setSMTPServer(serverSMTPAddr);
-            uint16_t portSMTP = serverSMTP[F("port")];
-            emailSend.setSMTPPort(portSMTP);
-            const char* loginSMTP = serverSMTP[F("login")];
-            emailSend.setEMailLogin(loginSMTP);
-            const char* passwordSMTP = serverSMTP[F("password")];
-            emailSend.setEMailPassword(passwordSMTP);
-            const char* fromSMTP = serverSMTP[F("from")];
-            emailSend.setEMailFrom(fromSMTP);
-
-            DEBUG_PRINT(F("server "));
-            DEBUG_PRINTLN(serverSMTPAddr);
-            DEBUG_PRINT(F("port "));
-            DEBUG_PRINTLN(portSMTP);
-            DEBUG_PRINT(F("login "));
-            DEBUG_PRINTLN(loginSMTP);
-            DEBUG_PRINT(F("password "));
-            DEBUG_PRINTLN(passwordSMTP);
-            DEBUG_PRINT(F("from "));
-            DEBUG_PRINTLN(fromSMTP);
-
-            EMailSender::EMailMessage message;
-            message.subject = F("3D printer");
-            message.message = F("3D printer job completed");
-            EMailSender::Response resp = emailSend.send((const char*)(emailNotification[F("finishPrintEmail")]), message);
-
-            DEBUG_PRINTLN(resp.status);
-            DEBUG_PRINTLN(resp.code);
-            DEBUG_PRINTLN(resp.desc);
-            }
-
-            EMailSender::EMailMessage message;
-            message.subject = "Soggetto";
-            message.message = "Ciao come stai io bene.";
-
-            message.mime = MIME_TEXT_PLAIN;
-
-            byte attachsNumber = 1;
-
-            EMailSender::Response resp = emailSend.send("renzo.mischianti@gmail.com", message);
-          DEBUG_PRINTLN(resp.status);
-          DEBUG_PRINTLN(resp.code);
-          DEBUG_PRINTLN(resp.desc);
-
-          }
-
-      }else{
-        DEBUG_PRINTLN(F("fail."));
-      }
-#endif
-#ifdef TELEGRAM
-      tgOwnerSend("Print Job Completed!");
-    }
-    if (prevState == PRINTER_IDLE && gPrinterInf.print_state == PRINTER_PRINTING) {
-      afSend = true;
-    }
-    if (afSend && gPrinterInf.print_file_inf.file_name.length() > 3){
-      tgOwnerSend(gPrinterInf.print_file_inf.file_name + "\nPrint Job Started...");
-      afSend = false;
-    }
-    if (prevState == PRINTER_PRINTING && gPrinterInf.print_state == PRINTER_PAUSE) {
-      tgOwnerSend("WARNING: Printer Paused or Filament is Over!");
-    }
-    if (prevState == PRINTER_PAUSE && gPrinterInf.print_state == PRINTER_PRINTING) {
-      tgOwnerSend(gPrinterInf.print_file_inf.file_name + "\nResumed...");
-    }
-    if (prevState != PRINTER_PRINTING && gPrinterInf.print_state == PRINTER_PRINTING) {
-      afSent = false;
-    }
-    if(gPrinterInf.print_state == PRINTER_PRINTING && gPrinterInf.print_file_inf.print_rate >= 95 && not afSent)
-    {
-      tgOwnerSend("INFO: Print Job is completed on 95%");
-      afSent = true;
-#endif
-    }
-    prevState = gPrinterInf.print_state;
-    startTime = millis();
-  }
-
   int i;
 
   //output_json();
@@ -1540,9 +1353,6 @@ bool manageMessage(char* readStr, int readSize){
           file_fragment = 0;
           rcv_end_flag = false;
           transfer_file_flag = true;
-#ifdef TELEGRAM_R        
-          myBot.end();
-#endif        
 
           if(package_file_first(filePath) == 0)
           {
@@ -1552,9 +1362,6 @@ bool manageMessage(char* readStr, int readSize){
           else
           {
             transfer_file_flag = false;
-#ifdef TELEGRAM_R        
-            myBot.begin();
-#endif        
             transfer_state = TRANSFER_IDLE;
           }
           net_print((const uint8_t *) "ok\n", strlen((const char *)"ok\n"));
@@ -1724,7 +1531,8 @@ bool manageMessage(char* readStr, int readSize){
                 {
                   if(gcode.startsWith("M23") || gcode.startsWith("M24"))
                    {
-                    gPrinterInf.print_state = PRINTER_PRINTING;
+                    //gPrinterInf.print_state = PRINTER_PRINTING;
+                    setPrintState(PRINTER_PRINTING);
                     gPrinterInf.print_file_inf.file_name = "";
                     gPrinterInf.print_file_inf.file_size = 0;
                     gPrinterInf.print_file_inf.print_rate = 0;
@@ -2733,9 +2541,6 @@ void do_transfer()
         rcv_end_flag = false;
 
         transfer_file_flag = false;
-#ifdef TELEGRAM_R        
-        myBot.begin();
-#endif        
 
         transfer_state = TRANSFER_IDLE;
     #endif
@@ -2790,9 +2595,6 @@ void do_transfer()
              Serial.begin(115200);
           }
           transfer_file_flag = false;
-#ifdef TELEGRAM_R        
-          myBot.begin();
-#endif        
           rcv_end_flag = false;
           transfer_state = TRANSFER_IDLE;
 
@@ -4038,9 +3840,6 @@ void handleUpload()
     file_fragment = 0;
     rcv_end_flag = false;
     transfer_file_flag = true;
-#ifdef TELEGRAM_R        
-    myBot.end();
-#endif        
     gFileFifo.reset();
     upload_error = false;
     upload_success = false;
@@ -4061,9 +3860,6 @@ void handleUpload()
     else
     {
       transfer_file_flag = false;
-#ifdef TELEGRAM_R        
-      myBot.begin();
-#endif            
     }
     /*wait m3 reply for first frame*/
     int wait_tick = 0;
@@ -4192,9 +3988,6 @@ void handleUpload()
 
 
       transfer_file_flag = false;
-#ifdef TELEGRAM_R        
-      myBot.begin();
-#endif        
       rcv_end_flag = false;
       transfer_state = TRANSFER_IDLE;
       server.send(500, FPSTR(STR_MIME_APPLICATION_JSON), FPSTR(STR_JSON_ERR_500_NO_DATA_RECEIVED));
@@ -4788,7 +4581,8 @@ void handleApiChooseFileToPrint()
 
           printFinishFlag = false;
 
-          gPrinterInf.print_state = PRINTER_PRINTING;
+          //gPrinterInf.print_state = PRINTER_PRINTING;
+          setPrintState(PRINTER_PRINTING);
 
         }
       }
@@ -5105,12 +4899,14 @@ void handleApiPrint()
       if(strcmp(action, "pause") == 0)
       {
         gcodeStr.concat("M25");
-        gPrinterInf.print_state = PRINTER_PAUSE;
+        //gPrinterInf.print_state = PRINTER_PAUSE;
+        setPrintState(PRINTER_PAUSE);
       }
       else if(strcmp(action, "resume") == 0)
       {
         gcodeStr.concat("M24");
-        gPrinterInf.print_state = PRINTER_PRINTING;
+        //gPrinterInf.print_state = PRINTER_PRINTING;
+        setPrintState(PRINTER_PRINTING);
       }
       else
       {

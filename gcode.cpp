@@ -11,6 +11,77 @@ uint8_t temp_update_flag = 0;
 
 PRINT_INF gPrinterInf;
 
+#ifdef TELEGRAM
+#include <AsyncTelegram2.h>
+
+// Timezone definition
+#include <time.h>
+#define MYTZ "CET-1CEST,M3.5.0,M10.5.0/3"
+
+BearSSL::WiFiClientSecure clientsec;
+BearSSL::Session session;
+BearSSL::X509List certificate(telegram_cert);
+
+AsyncTelegram2 myBot(clientsec);
+
+// Name of public channel (your bot must be in admin group)
+//const char* channel = "@VscEsp";
+int64_t userid = 248947239;
+const char* token = "6256218324:AAFdr9j8eVG-jp63R-u27bd_TSp_9UAamfs";
+String device = "CR-10";
+//const char* token = "6204913234:AAGLd9bkE8FOfT1WvFCpVeSjgBpoMqEELjU";
+//String device = "Anet A8";
+//const char* token = "6059619938:AAFVVUeVKhUKmzL2ZZZfZnBZUvVuCPNkFBk";
+//String device = "Sapphire Pro";
+
+void tgOwnerSend(String s) {
+    String message;
+    message += device;
+    message += s;
+    myBot.sendTo(userid, message);
+}
+
+void initTelegram(String ip) 
+{
+    // Sync time with NTP, to check properly Telegram certificate
+    configTime(MYTZ, "time.google.com", "time.windows.com", "pool.ntp.org");
+    //Set certficate, session and some other base client properies
+    clientsec.setSession(&session);
+    clientsec.setTrustAnchors(&certificate);
+    clientsec.setBufferSizes(1024, 1024);
+    // Set the Telegram bot properies
+    myBot.setUpdateTime(2000);
+    myBot.setTelegramToken(token);
+  
+    if (myBot.begin()) {
+      device += "("; 
+      device += ip;
+      device += "):\n";
+      tgOwnerSend("OnLine");
+    }
+}
+#endif
+
+void setPrintState(PRINT_STATE value)
+{
+  if (value != gPrinterInf.print_state) {
+#ifdef TELEGRAM
+    if (gPrinterInf.print_state == PRINTER_PRINTING && value == PRINTER_PAUSE) {
+      tgOwnerSend("WARNING: Printer Paused or Filament is Over!");
+    }
+    if (gPrinterInf.print_state == PRINTER_PAUSE && value == PRINTER_PRINTING) {
+      tgOwnerSend(gPrinterInf.print_file_inf.file_name + "\nResumed...");
+    }
+    if (gPrinterInf.print_state == PRINTER_IDLE && value == PRINTER_PRINTING) {
+      tgOwnerSend(gPrinterInf.print_file_inf.file_name + "\nPrint Job Started...");
+    }
+    if (gPrinterInf.print_state == PRINTER_PRINTING && value == PRINTER_IDLE) {
+      tgOwnerSend(gPrinterInf.print_file_inf.file_name + "\nPrint Job Terminated!");
+    }
+#endif
+    gPrinterInf.print_state = value;
+  }
+}
 
 uint8_t  DecStr2Float(int8_t * buf,  float  *result)
 {
@@ -221,15 +292,18 @@ void paser_cmd(uint8_t *cmdRxBuf)
 	//	net_print((const uint8_t *)line.c_str(), strlen((const char *)line.c_str()));
 		if(line.startsWith("IDLE", 5))
 		{
-			gPrinterInf.print_state = PRINTER_IDLE;
+			//gPrinterInf.print_state = PRINTER_IDLE;
+      setPrintState(PRINTER_IDLE);
 		}
 		else if(line.startsWith("PAUSE", 5))
 		{
-			gPrinterInf.print_state = PRINTER_PAUSE;
+			//gPrinterInf.print_state = PRINTER_PAUSE;
+      setPrintState(PRINTER_PAUSE);
 		}
 		else if(line.startsWith("PRINTING", 5))
 		{
-			gPrinterInf.print_state = PRINTER_PRINTING;
+			//gPrinterInf.print_state = PRINTER_PRINTING;
+      setPrintState(PRINTER_PRINTING);
 		}
 		return;
 	}
