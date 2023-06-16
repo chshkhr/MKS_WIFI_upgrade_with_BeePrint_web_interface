@@ -26,8 +26,7 @@ BearSSL::X509List certificate(telegram_cert);
 AsyncTelegram2 myBot(clientsec);
 
 // Name of public channel (your bot must be in admin group)
-//const char* channel = "@VscEsp";
-int64_t userid = 248947239;
+int64_t userid = 123456789;
 String device = "";
 
 struct printer_data { const byte ip3; const char device[15]; const char token[48]; };
