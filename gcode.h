@@ -26,17 +26,17 @@ typedef struct
 
 typedef struct
 {
-	float curSprayerTemp[2];	// 2¸öÅçÍ·ÎÂ¶È
-	float curBedTemp;	//ÈÈ´²ÎÂ¶È
-	float desireSprayerTemp[2];// 2¸öÅçÍ·Ä¿±êÎÂ¶È
-	float desireBedTemp;// ÈÈ´²Ä¿±êÎÂ¶È
+	float curSprayerTemp[2];	// 2ï¿½ï¿½ï¿½ï¿½Í·ï¿½Â¶ï¿½
+	float curBedTemp;	//ï¿½È´ï¿½ï¿½Â¶ï¿½
+	float desireSprayerTemp[2];// 2ï¿½ï¿½ï¿½ï¿½Í·Ä¿ï¿½ï¿½ï¿½Â¶ï¿½
+	float desireBedTemp;// ï¿½È´ï¿½Ä¿ï¿½ï¿½ï¿½Â¶ï¿½
 	
 	String sd_file_list;
-	//String sd_file_list_t; //»º´æ
+	//String sd_file_list_t; //ï¿½ï¿½ï¿½ï¿½
 	//String udisk_file_list;	
-	//String udisk_file_list_t;//»º´æ
+	//String udisk_file_list_t;//ï¿½ï¿½ï¿½ï¿½
 
-	PRINT_STATE print_state;	//´òÓ¡×´Ì¬
+	PRINT_STATE print_state;	//ï¿½ï¿½Ó¡×´Ì¬
 	PRINT_FILE_INF print_file_inf;
 
 	
@@ -51,6 +51,15 @@ extern bool getting_file_flag;
 
 extern File treeFile;
 
+#define TELEGRAM
+
+#ifdef TELEGRAM
+#include <ESP8266WiFi.h>
+extern void initTelegram(IPAddress ip);
+//extern void processTelegram(void);
+#endif
+extern void setPrintState(PRINT_STATE value);
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -62,4 +71,3 @@ extern void net_print(const uint8_t *sbuf, uint32_t len);
 }
 #endif
 #endif
-

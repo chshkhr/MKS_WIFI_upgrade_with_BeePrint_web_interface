@@ -539,5 +539,3 @@ void HSPIClass::transferDwords_(uint32_t * out, uint32_t * in, uint8_t size) {
         }
     }
 }
-
-

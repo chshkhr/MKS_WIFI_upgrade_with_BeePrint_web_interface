@@ -11,6 +11,134 @@ uint8_t temp_update_flag = 0;
 
 PRINT_INF gPrinterInf;
 
+#ifdef TELEGRAM
+#include <ESP8266WiFi.h>
+#include <AsyncTelegram2.h>
+
+// Timezone definition
+#include <time.h>
+#define MYTZ "CET-1CEST,M3.5.0,M10.5.0/3"
+
+BearSSL::WiFiClientSecure clientsec;
+BearSSL::Session session;
+BearSSL::X509List certificate(telegram_cert);
+
+AsyncTelegram2 myBot(clientsec);
+
+int64_t userid = 123456789;
+String device = "";
+
+struct printer_data { const byte ip3; const char device[15]; const char token[48]; };
+const int printer_data_size = 4;
+const struct printer_data printer_datas[printer_data_size] = 
+  {
+    { 225, "Sapphire Pro", "<Telegram Token 1>" }, 
+    { 199, "Anet A8", "<Telegram Token 2>" },
+    { 12, "CR-10", "<Telegram Token 3>" },
+    { 106, "Bluer", "<Telegram Token 4>" }
+  };
+
+void tgOwnerSend(String s) {
+  if (myBot.begin()){
+    myBot.sendTo(userid, device + s);
+    myBot.end();
+  }
+}
+
+void initTelegram(IPAddress ip) 
+{
+    // Sync time with NTP, to check properly Telegram certificate
+    configTime(MYTZ, "time.google.com", "time.windows.com", "pool.ntp.org");
+    //Set certficate, session and some other base client properies
+    clientsec.setSession(&session);
+    clientsec.setTrustAnchors(&certificate);
+    clientsec.setBufferSizes(1024, 1024);
+    // Set the Telegram bot properies
+    myBot.setUpdateTime(2000);
+
+    for (int i = 0; i < printer_data_size; i++){
+      if (printer_datas[i].ip3 == ip[3]) {
+        device = printer_datas[i].device;
+        device += " ("; 
+        device += ip.toString();
+        device += "):\n";
+        myBot.setTelegramToken(printer_datas[i].token);
+        tgOwnerSend("OnLine");
+        break;
+      }
+    }
+}
+
+//String process_tg_message(char* msg_txt)
+//{
+//  char* command = strtok(msg_txt, " ");
+//  String s = "";
+//  char buf[40];
+//  if (strcmp(command, "Time") == 0) {
+//    sprintf(buf, "%02d:%02d:%02d",
+//                  gPrinterInf.print_file_inf.print_hours, gPrinterInf.print_file_inf.print_mins, gPrinterInf.print_file_inf.print_seconds);
+//    s = "Time: ";
+//    s += buf;
+//  } else if (strcmp(command, "Temp") == 0) {
+//    sprintf(buf, "Nozzle: %d/%d\nBed: %d/%d",
+//          (int)gPrinterInf.curSprayerTemp[0], (int)gPrinterInf.desireSprayerTemp[0], (int)gPrinterInf.curBedTemp, (int)gPrinterInf.desireBedTemp);
+//    s += buf;
+//  } else if (strcmp(command, "Status") == 0) {
+//    s = "Status: ";
+//    switch(gPrinterInf.print_state) {
+//        case PRINTER_IDLE: s += "IDLE"; break;
+//        case PRINTER_PRINTING: s += "PRINTING"; break;
+//        case PRINTER_PAUSE: s += "PAUSE"; break;
+//    }
+//  } else if (strcmp(command, "File") == 0) {
+//    s = "File: ";
+//    s += gPrinterInf.print_file_inf.file_name;
+//  } else {
+//    s = "Unknown: ";
+//    s += command;
+//    s += ".\nAvailable: Status, File, Temp, Time";
+//  }
+//  return s;
+//}
+//
+//void processTelegram(void)
+//{
+//  // local variable to store telegram message data
+//  TBMessage msg;
+//
+//  // if there is an incoming message...
+//  if (myBot.getNewMessage(msg) && msg.chatId == userid) {
+//    int l = msg.text.length() + 1;
+//    char buf[l];
+//    msg.text.toCharArray(buf, l);
+//    String s = process_tg_message(buf);
+//    if (s != "")
+//      myBot.sendMessage(msg, s);
+//  }
+//}
+
+#endif
+
+void setPrintState(PRINT_STATE value)
+{
+  if (value != gPrinterInf.print_state) {
+#ifdef TELEGRAM
+    if (gPrinterInf.print_state == PRINTER_PRINTING && value == PRINTER_PAUSE) {
+      tgOwnerSend("WARNING: Printer Paused or Filament is Over!");
+    }
+    if (gPrinterInf.print_state == PRINTER_PAUSE && value == PRINTER_PRINTING) {
+      tgOwnerSend("Resumed...");
+    }
+    if (gPrinterInf.print_state == PRINTER_IDLE && value == PRINTER_PRINTING) {
+      tgOwnerSend("Print Job Started...");
+    }
+    if (gPrinterInf.print_state == PRINTER_PRINTING && value == PRINTER_IDLE) {
+      tgOwnerSend("Print Job Terminated!");
+    }
+#endif
+    gPrinterInf.print_state = value;
+  }
+}
 
 uint8_t  DecStr2Float(int8_t * buf,  float  *result)
 {
@@ -221,15 +349,18 @@ void paser_cmd(uint8_t *cmdRxBuf)
 	//	net_print((const uint8_t *)line.c_str(), strlen((const char *)line.c_str()));
 		if(line.startsWith("IDLE", 5))
 		{
-			gPrinterInf.print_state = PRINTER_IDLE;
+			//gPrinterInf.print_state = PRINTER_IDLE;
+      setPrintState(PRINTER_IDLE);
 		}
 		else if(line.startsWith("PAUSE", 5))
 		{
-			gPrinterInf.print_state = PRINTER_PAUSE;
+			//gPrinterInf.print_state = PRINTER_PAUSE;
+      setPrintState(PRINTER_PAUSE);
 		}
 		else if(line.startsWith("PRINTING", 5))
 		{
-			gPrinterInf.print_state = PRINTER_PRINTING;
+			//gPrinterInf.print_state = PRINTER_PRINTING;
+      setPrintState(PRINTER_PRINTING);
 		}
 		return;
 	}

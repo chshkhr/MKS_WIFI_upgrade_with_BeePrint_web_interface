@@ -26,6 +26,3 @@ const int EspReqTransferPin = 0;  // GPIO0, output, indicates to the SAM that we
 const int McuTfrReadyPin = 4;     // GPIO4, input, indicates that MCU is ready to execute an SPI transaction
 
 #endif
-
-
-
