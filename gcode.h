@@ -54,8 +54,9 @@ extern File treeFile;
 #define TELEGRAM
 
 #ifdef TELEGRAM
-extern void initTelegram(String ip);
-extern void processTelegram(void);
+#include <ESP8266WiFi.h>
+extern void initTelegram(IPAddress ip);
+//extern void processTelegram(void);
 #endif
 extern void setPrintState(PRINT_STATE value);
 

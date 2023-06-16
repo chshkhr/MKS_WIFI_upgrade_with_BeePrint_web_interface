@@ -959,7 +959,7 @@ void setup() {
   //  net_env_prepare();
 
 #ifdef TELEGRAM
-    initTelegram(WiFi.localIP().toString());
+    initTelegram(WiFi.localIP());
 #endif
   }
   /*else if (smartConfig())
@@ -1151,11 +1151,11 @@ int get_printer_reply()
 void loop()
 {
 
-#ifdef TELEGRAM
-  if (!transfer_file_flag) {
-    processTelegram();
-  }
-#endif
+//#ifdef TELEGRAM
+//  if (!transfer_file_flag) {
+//    processTelegram();
+//  }
+//#endif
   
   int i;
 
