@@ -25,7 +25,6 @@ BearSSL::X509List certificate(telegram_cert);
 
 AsyncTelegram2 myBot(clientsec);
 
-// Name of public channel (your bot must be in admin group)
 int64_t userid = 123456789;
 String device = "";
 
